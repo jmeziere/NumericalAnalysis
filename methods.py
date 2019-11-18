@@ -426,25 +426,49 @@ class LeastSquares:
 
         return (solution,rmse)
 
-    def GrammSchmidt(self, method = 'classic'):
+    def GramSchmidt(self, matrix, method = 'classic'):
         from numpy.linalg import norm
         from numpy import zeros_like, zeros, dot, float64
 
-        Q = zeros_like(self.A,float64)
-        R = zeros((len(self.A[0]),len(self.A[0])),float64)
+        Q = zeros_like(matrix,float64)
+        R = zeros((len(matrix[0]),len(matrix[0])),float64)
         for i in range(len(Q[0])):
-            q = self.A[:,i]
+            q = matrix[:,i]
             for j in range(i):
-                R[j,i] = dot(Q[:,j],self.A[:,i])
+                if method == 'classic' or j == 0:
+                    R[j,i] = dot(Q[:,j],matrix[:,i])
+                elif method == 'modern':
+                    R[j,i] = dot(Q[:,j],q)
                 q -= R[j,i]*Q[:,j]
             R[i,i] = norm(q)
+            if R[i,i] < 1e-5:
+                return (zeros(0),i)
             Q[:,i] = q/R[i,i]
-        print(R)
-        print(Q)
         return (R,Q)
                 
-            
-
-
+    def QRFact(self, gsmethod = 'classic',maxIts = 10):
+        from numpy import transpose, matmul, append, expand_dims
+        from numpy.random import uniform
+        A = self.A
+        for i in range(len(A[0]),len(A)):
+            new_vec = uniform(-50,50,len(A))
+            new_vec = expand_dims(new_vec,axis = 1)
+            A = append(A,new_vec,1)
+        Itnum = 0
+        repeat = True
+        Q = None
+        while repeat == True and Itnum < maxIts:
+            if Q != None:
+                A[i] = uniform(-50,50,len(A))
+            (R,Q) = self.GramSchmidt(A,gsmethod)
+            if R.size == 0:
+                replace_vector = Q
+            else:
+                repeat = False
+            Itnum += 1
+        new_b = matmul(transpose(Q),self.b)
+        solver = SysEquats(self.A,self.b)
+        solution = solver.solveSystem(R[:len(self.A[0]),:len(self.A[0])],new_b[:len(self.A[0])])
+        return (solution[:len(self.A)],abs(new_b[len(self.A[0]):]))
 
 
